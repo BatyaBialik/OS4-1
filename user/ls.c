@@ -42,6 +42,11 @@ ls(char *path)
   }
 
   switch(st.type){
+  case T_SYMLINK:
+    //TODO: handle
+    //readlink();
+    printf("%s->%s %d %d 0\n", fmtname(path), st.type, st.ino);
+    break;
   case T_FILE:
     printf("%s %d %d %l\n", fmtname(path), st.type, st.ino, st.size);
     break;
