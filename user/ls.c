@@ -2,6 +2,7 @@
 #include "kernel/stat.h"
 #include "user/user.h"
 #include "kernel/fs.h"
+#include "kernel/fcntl.h"
 
 char*
 fmtname(char *path)
@@ -29,8 +30,7 @@ ls(char *path)
   int fd;
   struct dirent de;
   struct stat st;
-
-  if((fd = open(path, 0)) < 0){
+  if((fd = open(path, O_NOSYMLINKFOLLOW)) < 0){
     fprintf(2, "ls: cannot open %s\n", path);
     return;
   }
@@ -43,9 +43,9 @@ ls(char *path)
 
   switch(st.type){
   case T_SYMLINK:
-    //TODO: handle
-    //readlink();
-    printf("%s->%s %d %d 0\n", fmtname(path), st.type, st.ino);
+    readlink(path,buf,512);
+    printf("hiiiii%s", buf);
+    printf("%s->%s %d %d 0\n", fmtname(path), buf, st.type, st.ino);
     break;
   case T_FILE:
     printf("%s %d %d %l\n", fmtname(path), st.type, st.ino, st.size);
@@ -68,7 +68,16 @@ ls(char *path)
         printf("ls: cannot stat %s\n", buf);
         continue;
       }
-      printf("%s %d %d %d\n", fmtname(buf), st.type, st.ino, st.size);
+      if (st.type==T_SYMLINK){
+        
+        // readlink(buf,linkBuf,512);
+        // printf("hiiiii%s", linkBuf);
+        printf("%s-> %d %d 0\n", fmtname(buf), st.type, st.ino);
+      }
+      else
+      {
+       printf("%s %d %d %d\n", fmtname(buf), st.type, st.ino, st.size);
+      }
     }
     break;
   }

@@ -238,15 +238,8 @@ sys_unlink(void)
   }
   iunlockput(dp);
 
-  if (ip->type == T_SYMLINK) //delete
-  {
-    dp->nlink--;
-    iupdate(dp);
-  }
-  else
-  {
-    ip->nlink--;
-  }
+  ip->nlink--;
+  
   iupdate(ip);
   iunlockput(ip);
 
@@ -320,7 +313,6 @@ sys_open(void)
     return -1;
 
   begin_op();
-
   if (omode & O_CREATE)
   {
     ip = create(path, T_FILE, 0, 0);
@@ -339,9 +331,9 @@ sys_open(void)
     }
     ilock(ip);
 
-
-    if (ip->type == T_SYMLINK)
+    if (ip->type == T_SYMLINK && (omode != O_NOSYMLINKFOLLOW))
     {
+
       if ((ip = dereferenceLink(ip)) == 0)
       {
         end_op();
@@ -349,7 +341,7 @@ sys_open(void)
       }
     }
 
-    if (ip->type == T_DIR && omode != O_RDONLY)
+    if (ip->type == T_DIR && (omode != O_RDONLY) && (omode != O_NOSYMLINKFOLLOW))
     {
       iunlockput(ip);
       end_op();
@@ -394,7 +386,6 @@ sys_open(void)
 
   iunlock(ip);
   end_op();
-
   return fd;
 }
 
@@ -506,18 +497,22 @@ sys_exec(void)
   }
   struct inode *ip;
 
-  if((ip = namei(path)) == 0){ // check for inode's name
-    end_op();
-    return -1;
-  }
-  ilock(ip);
-  if (ip->type == T_SYMLINK)
+   if((ip = namei(path)) == 0){ // check for inode's name
+     end_op();
+     return -1;
+   }
+   ilock(ip);
+   if (ip->type == T_SYMLINK)
+   {
+     if (dereferenceLinkPath(ip, path, MAXPATH) == 0)
+     { //returns unlocks ip
+       end_op();
+       return -1;
+     }
+   }
+  else
   {
-    if (dereferenceLinkPath(ip, path, MAXPATH) == 0)
-    { //returns unlocks ip
-      end_op();
-      return -1;
-    }
+    iunlock(ip);
   }
   
   int ret = exec(path, argv);
@@ -592,7 +587,6 @@ sys_symlink(void)
     return -1;
   }
   iunlock(dp);
-
   // Create a file in new and add to directory
   ip = create(new, T_SYMLINK, 0, 0);
   if (ip == 0)
@@ -600,9 +594,11 @@ sys_symlink(void)
     end_op();
     return -1;
   }
+
   // Write old to file
-  ilock(ip);
+
   writei(ip, 1, (uint64)old, 0, strlen(old)+1);
+
   iunlockput(ip);
   end_op();
 
@@ -646,9 +642,11 @@ sys_readlink(void)
   return res;
 }
 
-//ip received locked, returned locked
+//ip received locked, returned unlocked
 int dereferenceLinkPath(struct inode* ip, char* lastPathBuff, int lastPathBuffSize)
 {
+  printf("started dereferenceLinkPath\n");
+
   int iterNumber = 0;
   struct inode* newip;
   while(iterNumber < MAX_DEREFERENCE)
@@ -656,17 +654,21 @@ int dereferenceLinkPath(struct inode* ip, char* lastPathBuff, int lastPathBuffSi
     if (ip->type == T_SYMLINK)
     {
       int res = readi(ip, 0, (uint64)lastPathBuff, 0, lastPathBuffSize); //read link
+      printf("%s",lastPathBuff);
       if(res<=0)
       {
-        return -1;
+        iunlock(ip);
+        return 0;
       }
       if ((newip = namei(lastPathBuff)) == 0) // get to newIP
       {
+        iunlock(ip);
         return 0; // if failed to fetch, return empty ip
       }
       iunlock(ip);
       ip = newip;
       ilock(ip);
+
       iterNumber += 1 ;
     }
     else

@@ -23,7 +23,7 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
-int symblink(const char*, const char*);
+int symlink(const char*, const char*);
 int readlink(const char*, char*, int);
 
 
