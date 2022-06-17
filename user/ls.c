@@ -23,6 +23,27 @@ fmtname(char *path)
   return buf;
 }
 
+char*
+fmtSymLink(char *path, char* link)
+{
+  static char buf[DIRSIZ+1];
+  char *p;
+
+  // Find first character after last slash.
+  for(p=path+strlen(path); p >= path && *p != '/'; p--)
+    ;
+  p++;
+
+  // Return blank-padded name.
+  if(strlen(p) >= DIRSIZ)
+    return p;
+  memmove(buf, p, strlen(p));
+  memmove(buf+strlen(p), "->",2);
+  memmove(buf+strlen(p)+2, link, strlen(link));
+  memset(buf+strlen(p)+2+strlen(link), ' ', DIRSIZ-strlen(p)-strlen(link)-2);
+  return buf;
+}
+
 void
 ls(char *path)
 {
@@ -44,8 +65,7 @@ ls(char *path)
   switch(st.type){
   case T_SYMLINK:
     readlink(path,buf,512);
-    printf("hiiiii%s", buf);
-    printf("%s->%s %d %d 0\n", fmtname(path), buf, st.type, st.ino);
+    printf("%s %d %d 0\n", fmtSymLink(path, buf), st.type, st.ino);
     break;
   case T_FILE:
     printf("%s %d %d %l\n", fmtname(path), st.type, st.ino, st.size);
@@ -69,13 +89,9 @@ ls(char *path)
         continue;
       }
       if (st.type==T_SYMLINK){
-        char * linkBuf[512];
-        prinf("before read\n")
+        char linkBuf[512];
         readlink(buf,linkBuf,512);
-        prinf("after read\n")
-
-        // printf("hiiiii%s", linkBuf);
-        printf("%s-> %d %d 0\n", fmtname(buf), st.type, st.ino);
+        printf("%s %d %d 0\n", fmtSymLink(buf, linkBuf), st.type, st.ino);
       }
       else
       {

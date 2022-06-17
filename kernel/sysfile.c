@@ -564,8 +564,6 @@ sys_pipe(void)
 uint64
 sys_symlink(void)
 {
-  printf("inside symlink functoin\n");
-
   char new[MAXPATH], old[MAXPATH];
   char name[DIRSIZ];
 
@@ -598,14 +596,12 @@ sys_symlink(void)
   }
 
   // Write old to file
-  printf("symlink write to file %s", old);
-  if (writei(ip, 1, (uint64)old, 0, strlen(old)+1) < strlen(old)+1)
+  int a = writei(ip, 0, (uint64)old, 0, strlen(old)+1);
+  if (a<strlen(old) )
   {
     end_op();
     return -1;
   }
-  printf("symlink wrote to file");
-
   iunlockput(ip);
   end_op();
 
@@ -615,24 +611,19 @@ sys_symlink(void)
 uint64
 sys_readlink(void)
 {
-  printf("inside readLnk functoin\n");
-
   char pathname[MAXPATH];
-  char *buf=0;
+  uint64 buf;
   int bufSize;
-  if (argstr(0, pathname, MAXPATH) < 0 || argaddr(1, ((uint64 *) buf)) < 0 || argint(2, &bufSize) < 0)
+  if (argstr(0, pathname, MAXPATH) < 0 || argaddr(1, &buf) < 0 || argint(2, &bufSize) < 0)
     return -1;
 
   struct inode *ip;
   begin_op();
-  printf("geting ip\n");
-
   if ((ip = namei(pathname)) == 0) //check if path exist
   {
     end_op();
     return -1;
   }
-  printf("got ip\n");
   ilock(ip);
   if (ip->type != T_SYMLINK)
   {
@@ -646,13 +637,19 @@ sys_readlink(void)
     end_op();
     return -1;
   }
+  char buffer[bufSize];
+  int res = readi(ip, 0, (uint64)buffer, 0, bufSize);
+  struct proc *p = myproc();
 
-  printf("reading ip\n");
+  if (copyout(p->pagetable, buf, buffer, bufSize) < 0)
+  {
 
-  int res = readi(ip, 0, (uint64)buf, 0, bufSize);
-  printf("read ip with res %d\n", res);
-
+    iunlock(ip);
+    end_op();
+    return -1;
+  }
   iunlock(ip);
+
   end_op();
   return res;
 }
@@ -660,8 +657,6 @@ sys_readlink(void)
 //ip received locked, returned unlocked
 int dereferenceLinkPath(struct inode* ip, char* lastPathBuff, int lastPathBuffSize)
 {
-  printf("started dereferenceLinkPath\n");
-
   int iterNumber = 0;
   struct inode* newip;
   while(iterNumber < MAX_DEREFERENCE)
