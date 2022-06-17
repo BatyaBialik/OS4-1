@@ -69,8 +69,11 @@ ls(char *path)
         continue;
       }
       if (st.type==T_SYMLINK){
-        
-        // readlink(buf,linkBuf,512);
+        char * linkBuf[512];
+        prinf("before read\n")
+        readlink(buf,linkBuf,512);
+        prinf("after read\n")
+
         // printf("hiiiii%s", linkBuf);
         printf("%s-> %d %d 0\n", fmtname(buf), st.type, st.ino);
       }

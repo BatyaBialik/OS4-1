@@ -564,6 +564,8 @@ sys_pipe(void)
 uint64
 sys_symlink(void)
 {
+  printf("inside symlink functoin\n");
+
   char new[MAXPATH], old[MAXPATH];
   char name[DIRSIZ];
 
@@ -596,8 +598,13 @@ sys_symlink(void)
   }
 
   // Write old to file
-
-  writei(ip, 1, (uint64)old, 0, strlen(old)+1);
+  printf("symlink write to file %s", old);
+  if (writei(ip, 1, (uint64)old, 0, strlen(old)+1) < strlen(old)+1)
+  {
+    end_op();
+    return -1;
+  }
+  printf("symlink wrote to file");
 
   iunlockput(ip);
   end_op();
@@ -608,6 +615,8 @@ sys_symlink(void)
 uint64
 sys_readlink(void)
 {
+  printf("inside readLnk functoin\n");
+
   char pathname[MAXPATH];
   char *buf=0;
   int bufSize;
@@ -616,12 +625,14 @@ sys_readlink(void)
 
   struct inode *ip;
   begin_op();
+  printf("geting ip\n");
 
   if ((ip = namei(pathname)) == 0) //check if path exist
   {
     end_op();
     return -1;
   }
+  printf("got ip\n");
   ilock(ip);
   if (ip->type != T_SYMLINK)
   {
@@ -635,7 +646,11 @@ sys_readlink(void)
     end_op();
     return -1;
   }
+
+  printf("reading ip\n");
+
   int res = readi(ip, 0, (uint64)buf, 0, bufSize);
+  printf("read ip with res %d\n", res);
 
   iunlock(ip);
   end_op();
