@@ -664,7 +664,6 @@ int dereferenceLinkPath(struct inode* ip, char* lastPathBuff, int lastPathBuffSi
     if (ip->type == T_SYMLINK)
     {
       int res = readi(ip, 0, (uint64)lastPathBuff, 0, lastPathBuffSize); //read link
-      printf("%s",lastPathBuff);
       if(res<=0)
       {
         iunlock(ip);
