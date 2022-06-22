@@ -441,12 +441,7 @@ sys_chdir(void)
     return -1;
   }
   ilock(ip);
-  if (ip->type != T_DIR && ip->type != T_SYMLINK)
-  {
-    iunlockput(ip);
-    end_op();
-    return -1;
-  }
+
   if (ip->type == T_SYMLINK)
   {
     if ((ip = dereferenceLink(ip)) == 0)
@@ -454,6 +449,13 @@ sys_chdir(void)
       end_op();
       return -1;
     }
+  }
+
+  if (ip->type != T_DIR)
+  {
+    iunlockput(ip);
+    end_op();
+    return -1;
   }
   iunlock(ip);
   iput(p->cwd);
@@ -698,11 +700,11 @@ struct inode* dereferenceLink(struct inode* ip)
   struct inode* newip;
   if (dereferenceLinkPath(ip, buff, bufSize))
   {
-    if ((newip = namei(buff)) == 0) // get to newIP
+    if ((newip = namei(buff)) != 0) // get to newIP
     {
       ilock(newip);
       return newip; // if failed to fetch, return empty ip
-    }
+    }    
   }
   return 0;
 }
